@@ -1,5 +1,19 @@
 # AURA Design System
 
+
+
+```js
+import lottie from 'lottie-web';
+
+// Universally compatible framework for pure web DOM or encapsulated mobile views
+const animation = lottie.loadAnimation({
+  container: document.getElementById('web4app-ui-layer'), 
+  renderer: 'svg', // Draws native vector elements instead of heavy WebGL layers
+  loop: true,
+  autoplay: true,
+  path: 'assets/3d_flattened_motion.json' 
+});
+```
 ## Theme
 ```theme.css
 Cyber Web4
