@@ -1,4 +1,4 @@
-```bash
+```mu
 AURA/
 │
 ├── DESIGN.md
