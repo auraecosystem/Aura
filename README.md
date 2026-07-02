@@ -87,3 +87,52 @@ AURA/
 └── .github/
     └── workflows/
         └── pages.yml
+
+```
+# landing page
+```pq
+Hero
+
+↓
+
+Partners
+
+↓
+
+Featured AI
+
+↓
+
+Featured Blockchain
+
+↓
+
+Statistics
+
+↓
+
+Timeline
+
+↓
+
+Products
+
+↓
+
+Blog
+
+↓
+
+Documentation
+
+↓
+
+Newsletter
+
+↓
+
+Community
+
+↓
+
+Footer
