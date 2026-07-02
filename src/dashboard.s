@@ -1,0 +1,191 @@
+<script>
+const canvas = document.getElementById('bg-canvas');
+const ctx = canvas.getContext('2d');
+
+// ------------------ CONFIG ------------------
+const baseColors = [
+  {r: 0, g: 209, b: 255},
+  {r: 0, g: 255, b: 224},
+  {r: 0, g: 170, b: 255}
+];
+let hueShift = 0;
+let particles = [];
+let trails = [];
+const maxTrails = 30;
+
+// Particle count dynamic based on screen size
+const particleCount = window.innerWidth < 768 ? 60 : 120;
+
+// Mouse tracking
+let mouse = { x: null, y: null };
+window.addEventListener('mousemove', e => {
+  mouse.x = e.clientX;
+  mouse.y = e.clientY;
+  trails.push({ x: mouse.x, y: mouse.y });
+  if(trails.length > maxTrails) trails.shift();
+});
+window.addEventListener('mouseleave', () => { mouse.x = null; mouse.y = null; });
+
+// Scroll parallax
+let scrollOffset = 0;
+window.addEventListener('scroll', () => { scrollOffset = window.scrollY * 0.2; });
+
+// ------------------ RESIZE ------------------
+function resizeCanvas() {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+}
+let resizeTimeout;
+window.addEventListener('resize', () => {
+  clearTimeout(resizeTimeout);
+  resizeTimeout = setTimeout(resizeCanvas, 200);
+});
+resizeCanvas();
+
+// ------------------ PARTICLE CLASS ------------------
+class Particle {
+  constructor() { this.reset(); }
+  reset() {
+    this.x = Math.random() * canvas.width;
+    this.y = Math.random() * canvas.height;
+    this.radius = Math.random() * 2 + 1;
+    this.speedX = (Math.random() - 0.5) * 0.3;
+    this.speedY = (Math.random() - 0.5) * 0.3;
+    this.baseColor = baseColors[Math.floor(Math.random() * baseColors.length)];
+  }
+  update() {
+    this.x += this.speedX;
+    this.y += this.speedY;
+    if(this.x < 0 || this.x > canvas.width || this.y < 0 || this.y > canvas.height) this.reset();
+
+    // Mouse interaction
+    if(mouse.x && mouse.y){
+      let dx = this.x - mouse.x;
+      let dy = this.y - mouse.y;
+      let dist = Math.sqrt(dx*dx + dy*dy);
+      if(dist < 100){
+        let angle = Math.atan2(dy, dx);
+        let force = (100 - dist) * 0.02;
+        this.x += Math.cos(angle) * force;
+        this.y += Math.sin(angle) * force;
+      }
+    }
+  }
+  draw() {
+    const r = Math.min(255, Math.max(0, this.baseColor.r + Math.sin(hueShift) * 50));
+    const g = Math.min(255, Math.max(0, this.baseColor.g + Math.cos(hueShift) * 50));
+    const b = Math.min(255, Math.max(0, this.baseColor.b + Math.sin(hueShift/2) * 50));
+    const color = `rgb(${r},${g},${b})`;
+    ctx.beginPath();
+    ctx.arc(this.x, this.y, this.radius, 0, Math.PI*2);
+    ctx.fillStyle = color;
+    ctx.shadowBlur = 8;
+    ctx.shadowColor = color;
+    ctx.fill();
+  }
+}
+
+// ------------------ INIT PARTICLES ------------------
+for(let i=0;i<particleCount;i++) particles.push(new Particle());
+
+// ------------------ DRAW GRID ------------------
+function drawGrid(){
+  const spacing = 100;
+  ctx.strokeStyle = 'rgba(0,209,255,0.05)';
+  ctx.lineWidth = 1;
+  // vertical lines
+  for(let x=0;x<canvas.width;x+=spacing){
+    ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,canvas.height); ctx.stroke();
+  }
+  // horizontal lines
+  for(let y=0;y<canvas.height;y+=spacing){
+    ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(canvas.width,y); ctx.stroke();
+  }
+  // glowing nodes
+  for(let x=0;x<canvas.width;x+=spacing){
+    for(let y=0;y<canvas.height;y+=spacing){
+      ctx.beginPath();
+      ctx.arc(x,y,1.2,0,Math.PI*2);
+      ctx.fillStyle = 'rgba(0,209,255,0.1)';
+      ctx.shadowBlur = 6;
+      ctx.shadowColor = 'rgba(0,209,255,0.2)';
+      ctx.fill();
+    }
+  }
+}
+
+// ------------------ DRAW LINES ------------------
+function drawLines(){
+  const connectionRadius = 100;
+  for(let i=0;i<particles.length;i++){
+    let p1 = particles[i];
+    for(let j=i+1;j<i+10 && j<particles.length;j++){ // limit connections
+      let p2 = particles[j];
+      let dx = p1.x - p2.x;
+      let dy = p1.y - p2.y;
+      let dist = Math.sqrt(dx*dx + dy*dy);
+      if(dist < connectionRadius){
+        let alpha = 1 - dist/connectionRadius;
+        if(mouse.x && mouse.y){
+          let midX = (p1.x+p2.x)/2;
+          let midY = (p1.y+p2.y)/2;
+          let mdx = midX - mouse.x;
+          let mdy = midY - mouse.y;
+          let mdist = Math.sqrt(mdx*mdx + mdy*mdy);
+          if(mdist < 150) alpha += 0.3;
+          if(alpha > 1) alpha = 1;
+        }
+        const r = Math.min(255, Math.max(0, 0 + Math.sin(hueShift)*50));
+        const g = Math.min(255, Math.max(0, 209 + Math.cos(hueShift)*50));
+        const b = Math.min(255, Math.max(0, 255 + Math.sin(hueShift/2)*50));
+        ctx.beginPath();
+        ctx.moveTo(p1.x,p1.y);
+        ctx.lineTo(p2.x,p2.y);
+        ctx.strokeStyle = `rgba(${r},${g},${b},${alpha})`;
+        ctx.lineWidth = 0.5;
+        ctx.shadowBlur = 4;
+        ctx.shadowColor = `rgb(${r},${g},${b})`;
+        ctx.stroke();
+      }
+    }
+  }
+}
+
+// ------------------ DRAW TRAILS ------------------
+let trailFrameCount = 0;
+function drawTrails(){
+  trailFrameCount++;
+  if(trailFrameCount % 2 !== 0) return;
+  for(let i=0;i<trails.length;i++){
+    const point = trails[i];
+    const alpha = i/trails.length * 0.5;
+    ctx.beginPath();
+    ctx.arc(point.x, point.y, 2, 0, Math.PI*2);
+    ctx.fillStyle = `rgba(0,255,224,${alpha})`;
+    ctx.shadowBlur = 6;
+    ctx.shadowColor = `rgba(0,255,224,${alpha})`;
+    ctx.fill();
+  }
+}
+
+// ------------------ ANIMATE ------------------
+function animate(){
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  ctx.save();
+  ctx.translate(0,scrollOffset); // parallax
+  drawGrid();
+  drawTrails();
+  particles.forEach(p => { p.update(); p.draw(); });
+  drawLines();
+  ctx.restore();
+  hueShift += 0.002;
+  requestAnimationFrame(animate);
+}
+animate();
+
+// ------------------ VISIBILITY OPTIMIZATION ------------------
+document.addEventListener('visibilitychange', () => {
+  if(document.hidden) cancelAnimationFrame(animate);
+  else animate();
+});
+</script>
